@@ -36,16 +36,67 @@ namespace ByteBank.View
         {
             var contas = r_Repositorio.GetContaClientes();
 
+            var qtdePorThread = contas.Count() / 4;
+
+            var conta_parte_1 = contas.Take(qtdePorThread);
+            var conta_parte_2 = contas.Skip(qtdePorThread).Take(qtdePorThread);
+            var conta_parte_3 = contas.Skip(qtdePorThread * 2).Take(qtdePorThread);
+            var conta_parte_4 = contas.Skip(qtdePorThread * 3);
+
+
             var resultado = new List<string>();
 
             AtualizarView(new List<string>(), TimeSpan.Zero);
 
             var inicio = DateTime.Now;
 
-            foreach (var conta in contas)
+            Thread thread_parte_1 = new Thread(() =>
             {
-                var resultadoConta = r_Servico.ConsolidarMovimentacao(conta);
-                resultado.Add(resultadoConta);
+                foreach (var conta in conta_parte_1)
+                {
+                    var resultadoConta = r_Servico.ConsolidarMovimentacao(conta);
+                    resultado.Add(resultadoConta);
+                }
+            });
+
+            thread_parte_1.Start();
+
+            Thread thread_parte_2 = new Thread(() =>
+            {
+                foreach (var conta in conta_parte_2)
+                {
+                    var resultadoConta = r_Servico.ConsolidarMovimentacao(conta);
+                    resultado.Add(resultadoConta);
+                }
+            });
+
+            thread_parte_2.Start();
+
+            Thread thread_parte_3 = new Thread(() =>
+            {
+                foreach (var conta in conta_parte_3)
+                {
+                    var resultadoConta = r_Servico.ConsolidarMovimentacao(conta);
+                    resultado.Add(resultadoConta);
+                }
+            });
+
+            thread_parte_3.Start();
+
+            Thread thread_parte_4 = new Thread(() =>
+            {
+                foreach (var conta in conta_parte_4)
+                {
+                    var resultadoConta = r_Servico.ConsolidarMovimentacao(conta);
+                    resultado.Add(resultadoConta);
+                }
+            });
+
+            thread_parte_4.Start();
+
+            while (thread_parte_1.IsAlive || thread_parte_2.IsAlive || thread_parte_3.IsAlive || thread_parte_4.IsAlive)
+            {
+                Thread.Sleep(250);
             }
 
             var fim = DateTime.Now;
