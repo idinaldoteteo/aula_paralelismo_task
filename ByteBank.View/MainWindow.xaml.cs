@@ -32,46 +32,36 @@ namespace ByteBank.View
             r_Servico = new ContaClienteService();
         }
 
-        private void BtnProcessar_Click(object sender, RoutedEventArgs e)
+        private async void BtnProcessar_Click(object sender, RoutedEventArgs e)
         {
-            var mainTask = TaskScheduler.FromCurrentSynchronizationContext();
             BtnProcessar.IsEnabled = false;
+            
+            var inicio = DateTime.Now;
 
             var contas = r_Repositorio.GetContaClientes();
 
-            var resultado = new List<string>();
+            var resultado = await ConsolidarContas(contas);
 
-            //AtualizarView(new List<string>(), TimeSpan.Zero);
+            var fim = DateTime.Now;
 
-            var inicio = DateTime.Now;
-           
-            var contasProcessadas = contas.Select(conta => 
-            {
-                return Task.Factory.StartNew(() => 
-                {
-                    var resultadoConta = r_Servico.ConsolidarMovimentacao(conta);
-                    resultado.Add(resultadoConta);
-                });
-            }).ToArray();
-
-            Task.WhenAll(contasProcessadas)
-                .ContinueWith(task =>
-                {
-                    var fim = DateTime.Now;
-                    AtualizarView(resultado, fim - inicio);
-                }, mainTask)
-                .ContinueWith(task =>
-                {
-                    BtnProcessar.IsEnabled = true;
-                }, mainTask);
-
+            AtualizarView(resultado, fim - inicio);
             
+            BtnProcessar.IsEnabled = true;
         }
 
-        private void AtualizarView(List<String> result, TimeSpan elapsedTime)
+        private async Task<string[]> ConsolidarContas(IEnumerable<ContaCliente> contas)
+        {
+            var tasks = contas.Select(conta =>            
+                Task.Factory.StartNew(() => r_Servico.ConsolidarMovimentacao(conta))
+            );
+
+            return await Task.WhenAll(tasks);
+        }
+
+        private void AtualizarView(IEnumerable<String> result, TimeSpan elapsedTime)
         {
             var tempoDecorrido = $"{ elapsedTime.Seconds }.{ elapsedTime.Milliseconds} segundos!";
-            var mensagem = $"Processamento de {result.Count} clientes em {tempoDecorrido}";
+            var mensagem = $"Processamento de {result.Count()} clientes em {tempoDecorrido}";
 
             LstResultados.ItemsSource = result;
             TxtTempo.Text = mensagem;
