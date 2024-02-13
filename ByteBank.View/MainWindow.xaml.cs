@@ -87,7 +87,7 @@ namespace ByteBank.View
                 {
                     ct.ThrowIfCancellationRequested();
 
-                    var resultadoConsolidado = r_Servico.ConsolidarMovimentacao(conta);
+                    var resultadoConsolidado = r_Servico.ConsolidarMovimentacao(conta, ct);
 
                     progressBar.Report(resultadoConsolidado);
 
