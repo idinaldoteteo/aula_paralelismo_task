@@ -4,18 +4,9 @@ using ByteBank.Core.Service;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace ByteBank.View
 {
@@ -34,25 +25,50 @@ namespace ByteBank.View
 
         private async void BtnProcessar_Click(object sender, RoutedEventArgs e)
         {
+            LimparView();
+
             BtnProcessar.IsEnabled = false;
-            
+
             var inicio = DateTime.Now;
 
             var contas = r_Repositorio.GetContaClientes();
+
+            PgsProgresso.Maximum = contas.Count();
 
             var resultado = await ConsolidarContas(contas);
 
             var fim = DateTime.Now;
 
             AtualizarView(resultado, fim - inicio);
-            
+
             BtnProcessar.IsEnabled = true;
+        }
+
+        private void LimparView()
+        {
+            LstResultados.ItemsSource = null;
+            TxtTempo.Text = "";
         }
 
         private async Task<string[]> ConsolidarContas(IEnumerable<ContaCliente> contas)
         {
-            var tasks = contas.Select(conta =>            
-                Task.Factory.StartNew(() => r_Servico.ConsolidarMovimentacao(conta))
+            var taskScheduleGui = TaskScheduler.FromCurrentSynchronizationContext();
+
+            var tasks = contas.Select(conta =>
+                Task.Factory.StartNew(() =>
+                {
+                    var resultadoConsolidado = r_Servico.ConsolidarMovimentacao(conta);
+
+                    Task.Factory.StartNew(() =>
+                        PgsProgresso.Value++,
+                        CancellationToken.None,
+                        TaskCreationOptions.None,
+                        taskScheduleGui
+                    );
+
+                    return resultadoConsolidado;
+                }
+                )
             );
 
             return await Task.WhenAll(tasks);
@@ -60,7 +76,7 @@ namespace ByteBank.View
 
         private void AtualizarView(IEnumerable<String> result, TimeSpan elapsedTime)
         {
-            var tempoDecorrido = $"{ elapsedTime.Seconds }.{ elapsedTime.Milliseconds} segundos!";
+            var tempoDecorrido = $"{elapsedTime.Seconds}.{elapsedTime.Milliseconds} segundos!";
             var mensagem = $"Processamento de {result.Count()} clientes em {tempoDecorrido}";
 
             LstResultados.ItemsSource = result;
